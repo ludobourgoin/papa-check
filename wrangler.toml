@@ -3,7 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2026-01-15"
 
 # Une seule cron toutes les 5 min. Les handlers internes filtrent :
-# - check-in : seulement si on est lundi/mercredi/vendredi/samedi à 10h Paris
+# - check-in : une fois par jour, à une heure tirée déterministiquement
+#              depuis la date Paris (plage 9h–20h), au plus 1 envoi/jour
 # - timeout  : seulement s'il y a un check-in en attente depuis > 20 min
 [triggers]
 crons = ["*/5 * * * *"]

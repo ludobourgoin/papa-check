@@ -18,41 +18,61 @@ export interface Env {
   TELEGRAM_WEBHOOK_SECRET: string;
 }
 
-const SEND_WEEKDAYS = new Set([1, 3, 5, 6]);
-const SEND_HOUR_PARIS = 10;
+const SEND_HOUR_MIN = 9;
+const SEND_HOUR_MAX = 20;
 const TIMEOUT_MINUTES = 20;
 
-interface ParisTime {
+interface ParisNow {
+  date: string;
   hour: number;
-  weekday: number;
+  minute: number;
+  second: number;
 }
 
-function parisTime(now: Date): ParisTime {
+function parisNow(now: Date): ParisNow {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Paris",
-    hour: "2-digit",
-    weekday: "short",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
     hour12: false,
   }).formatToParts(now);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const weekdayMap: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-  };
   return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
     hour: parseInt(get("hour"), 10),
-    weekday: weekdayMap[get("weekday")] ?? -1,
+    minute: parseInt(get("minute"), 10),
+    second: parseInt(get("second"), 10),
+  };
+}
+
+function hashDate(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function todayTarget(date: string): { hour: number; minute: number } {
+  const h = hashDate(date);
+  const range = SEND_HOUR_MAX - SEND_HOUR_MIN + 1;
+  return {
+    hour: SEND_HOUR_MIN + (h % range),
+    minute: Math.floor(h / range) % 60,
   };
 }
 
 async function handleScheduledCheckIn(env: Env, now: Date): Promise<void> {
-  const { hour, weekday } = parisTime(now);
-  if (!SEND_WEEKDAYS.has(weekday)) return;
-  if (hour !== SEND_HOUR_PARIS) return;
+  const p = parisNow(now);
+  const target = todayTarget(p.date);
+  if (p.hour * 60 + p.minute < target.hour * 60 + target.minute) return;
 
   const nowUnix = Math.floor(now.getTime() / 1000);
-  if (await sentRecently(env.DB, nowUnix - 12 * 3600)) return;
+  const parisMidnightUnix = nowUnix - (p.hour * 3600 + p.minute * 60 + p.second);
+  if (await sentRecently(env.DB, parisMidnightUnix)) return;
 
-  const text = pickGreeting();
+  const text = pickGreeting(p.hour);
   await sendMessage(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_FATHER_CHAT_ID, text);
   await insertCheckIn(env.DB, nowUnix, text);
 }
