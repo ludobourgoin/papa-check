@@ -113,6 +113,10 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 
 Tous les check-ins (envois + réponses + délai + timeouts) sont stockés en permanence dans la table D1 `check_ins`.
 
+**Web (recommandé)** — un dashboard Astro + Clerk déployé sur Cloudflare Pages, dans le dossier [`dashboard/`](dashboard/) du repo. Setup détaillé dans [dashboard/README.md](dashboard/README.md).
+
+**CLI** :
+
 ```bash
 # 20 derniers check-ins avec délai, statut, extrait de réponse
 npm run logs

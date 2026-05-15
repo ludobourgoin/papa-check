@@ -34,6 +34,10 @@ staged=$(git diff --cached --name-only --diff-filter=ACM)
 [ -z "$staged" ] && exit 0
 
 while IFS= read -r f; do
+  # Toujours autoriser les fichiers .example (templates documentés)
+  if [[ "$f" == *.example ]]; then
+    continue
+  fi
   for pat in "${FORBIDDEN_FILES[@]}"; do
     if echo "$f" | grep -qE "$pat"; then
       fail "fichier sensible staged : $f (motif: $pat)"

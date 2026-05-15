@@ -1,0 +1,20 @@
+---
+import { SignUp } from "@clerk/astro/components";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout title="Inscription · Papa Check">
+  <div class="auth-wrap">
+    <SignUp signInUrl="/sign-in" />
+  </div>
+</Layout>
+
+<style>
+  .auth-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 2rem;
+  }
+</style>

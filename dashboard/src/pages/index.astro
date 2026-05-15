@@ -1,0 +1,322 @@
+---
+import { UserButton } from "@clerk/astro/components";
+import Layout from "@/layouts/Layout.astro";
+import {
+  getStats,
+  getRecentCheckIns,
+  statusLabel,
+  delayMinutes,
+  formatDate,
+} from "@/lib/db";
+
+const db = Astro.locals.runtime.env.DB;
+const [stats, recent] = await Promise.all([
+  getStats(db),
+  getRecentCheckIns(db, 50),
+]);
+
+const fmt = (n: number | null, unit = "") =>
+  n === null ? "—" : `${Math.round(n * 10) / 10}${unit}`;
+---
+
+<Layout title="Tableau de bord · Papa Check">
+  <header class="topbar">
+    <h1>Papa Check</h1>
+    <div class="topbar-right">
+      <button id="refresh" type="button" title="Rafraîchir">↻</button>
+      <UserButton afterSignOutUrl="/sign-in" />
+    </div>
+  </header>
+
+  <main>
+    <section class="cards" aria-label="Indicateurs clés">
+      <article class="card">
+        <div class="card-label">Total envois</div>
+        <div class="card-value">{stats.total}</div>
+      </article>
+      <article class="card">
+        <div class="card-label">Taux de réponse</div>
+        <div class="card-value">{fmt(stats.responseRatePct, " %")}</div>
+        <div class="card-sub">
+          {stats.replied} sur {stats.total}
+        </div>
+      </article>
+      <article class="card">
+        <div class="card-label">Délai moyen</div>
+        <div class="card-value">{fmt(stats.delayAvgMin, " min")}</div>
+        {
+          stats.delayMinMin !== null && (
+            <div class="card-sub">
+              min {fmt(stats.delayMinMin)} · max {fmt(stats.delayMaxMin)}
+            </div>
+          )
+        }
+      </article>
+      <article class="card">
+        <div class="card-label">Fausses alertes</div>
+        <div class="card-value">{fmt(stats.falseAlarmRatePct, " %")}</div>
+        <div class="card-sub">
+          {stats.falseAlarms} sur {stats.timeoutsAlerted} alertes
+        </div>
+      </article>
+    </section>
+
+    <section class="cards secondary" aria-label="Répartition des réponses">
+      <article class="card mini">
+        <div class="dot green"></div>
+        <span class="mini-label">Positif</span>
+        <span class="mini-value">{stats.positive}</span>
+      </article>
+      <article class="card mini">
+        <div class="dot amber"></div>
+        <span class="mini-label">Transféré</span>
+        <span class="mini-value">{stats.ambiguous}</span>
+      </article>
+      <article class="card mini">
+        <div class="dot red"></div>
+        <span class="mini-label">Sans réponse</span>
+        <span class="mini-value">{stats.noReply}</span>
+      </article>
+    </section>
+
+    <section class="table-wrap">
+      <h2>Historique des check-ins</h2>
+      {
+        recent.length === 0 ? (
+          <p class="empty">Aucun check-in pour l'instant.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Message envoyé</th>
+                <th>Délai</th>
+                <th>Statut</th>
+                <th>Réponse</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((row) => {
+                const d = delayMinutes(row);
+                const s = statusLabel(row);
+                return (
+                  <tr>
+                    <td class="nowrap">{formatDate(row.sent_at)}</td>
+                    <td class="truncate">{row.message_text}</td>
+                    <td class="nowrap">
+                      {d === null ? "—" : `${d} min`}
+                    </td>
+                    <td>
+                      <span class={`pill ${s.className}`}>{s.label}</span>
+                    </td>
+                    <td class="truncate">{row.reply_text ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )
+      }
+    </section>
+  </main>
+</Layout>
+
+<script>
+  const REFRESH_MS = 60_000;
+  setTimeout(() => location.reload(), REFRESH_MS);
+  document.getElementById("refresh")?.addEventListener("click", () => {
+    location.reload();
+  });
+</script>
+
+<style>
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  #refresh {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 120ms;
+  }
+  #refresh:hover {
+    background: var(--gray-50);
+    color: var(--text);
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .cards.secondary {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .card-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  .card-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .card-sub {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .card.mini {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+  }
+  .mini-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    flex: 1;
+  }
+  .mini-value {
+    font-weight: 600;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot.green {
+    background: var(--green);
+  }
+  .dot.amber {
+    background: var(--amber);
+  }
+  .dot.red {
+    background: var(--red);
+  }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .table-wrap h2 {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .empty {
+    margin: 0;
+    padding: 1.5rem 1.25rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  th,
+  td {
+    padding: 0.625rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--gray-50);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  td.nowrap {
+    white-space: nowrap;
+  }
+  td.truncate {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .status-positive {
+    background: color-mix(in oklab, var(--green) 15%, transparent);
+    color: var(--green);
+  }
+  .status-forwarded {
+    background: color-mix(in oklab, var(--amber) 15%, transparent);
+    color: var(--amber);
+  }
+  .status-timeout {
+    background: color-mix(in oklab, var(--red) 15%, transparent);
+    color: var(--red);
+  }
+  .status-pending {
+    background: var(--gray-50);
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 640px) {
+    main {
+      padding: 1rem;
+    }
+    td.truncate {
+      max-width: 140px;
+    }
+  }
+</style>

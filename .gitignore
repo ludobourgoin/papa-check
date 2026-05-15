@@ -5,6 +5,9 @@ node_modules/
 .wrangler/
 .mf/
 
+# Astro
+.astro/
+
 # Secrets et variables d'env (ne JAMAIS commit)
 .env
 .env.*
