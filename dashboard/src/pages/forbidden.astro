@@ -1,0 +1,52 @@
+---
+import { SignOutButton } from "@clerk/astro/components";
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout title="Accès refusé · Papa Check">
+  <main class="forbidden">
+    <h1>Accès refusé</h1>
+    <p>
+      Ce dashboard est réservé. Ton compte n'est pas dans la liste
+      des utilisateurs autorisés.
+    </p>
+    <p>
+      Si tu penses que c'est une erreur, contacte Ludo.
+    </p>
+    <SignOutButton>
+      <button class="btn">Se déconnecter</button>
+    </SignOutButton>
+  </main>
+</Layout>
+
+<style>
+  .forbidden {
+    max-width: 480px;
+    margin: 5rem auto;
+    padding: 2rem;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  h1 {
+    margin-top: 0;
+    color: var(--red);
+  }
+  p {
+    color: var(--text-muted);
+  }
+  .btn {
+    margin-top: 1.5rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn:hover {
+    background: var(--gray-50);
+  }
+</style>

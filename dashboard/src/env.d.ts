@@ -4,6 +4,7 @@
 
 type Runtime = import("@astrojs/cloudflare").Runtime<{
   DB: D1Database;
+  ALLOWED_EMAILS: string;
 }>;
 
 declare namespace App {

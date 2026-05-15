@@ -17,17 +17,17 @@ Tableau de bord web Astro + Clerk déployé sur Cloudflare Pages, lit la même D
    - `Publishable key` : `pk_test_...` (publique, ira dans `PUBLIC_CLERK_PUBLISHABLE_KEY`)
    - `Secret key` : `sk_test_...` (privée, ira dans `CLERK_SECRET_KEY`)
 
-### 2 · Configurer l'allowlist Clerk (pour limiter les inscriptions à toi + papa)
+### 2 · Allowlist (côté code, pas côté Clerk)
 
-Dans le dashboard Clerk :
+⚠️ La fonctionnalité allowlist côté serveur de Clerk est payante (plan Pro). On la fait nous-mêmes côté code via une variable d'environnement, c'est gratuit et 100 % sous notre contrôle.
 
-1. **User & Authentication** → **Restrictions**
-2. Active **Allowlist mode** : "Sign-ups are only allowed for users on the allowlist"
-3. Ajoute :
-   - Ton email (ludo@coolbeans.cc)
-   - Celui de papa
+Note les emails à autoriser (le tien + celui de papa). Tu les mettras dans la variable `ALLOWED_EMAILS` à l'étape 3, séparés par des virgules :
 
-Toute personne hors allowlist qui essaiera de créer un compte sera bloquée par Clerk avec un message d'erreur clair.
+```
+ALLOWED_EMAILS=ludo@coolbeans.cc,email-de-papa@example.com
+```
+
+Comment ça marche : n'importe qui peut techniquement créer un compte sur ton Clerk (Clerk est ouvert), mais après login le middleware `src/middleware.ts` vérifie l'email. S'il n'est pas dans la liste, redirection vers `/forbidden` au lieu du dashboard.
 
 ### 3 · Créer le projet Cloudflare Pages
 
@@ -45,6 +45,7 @@ Option A — via le dashboard Cloudflare (recommandé) :
 6. Section **Environment variables** :
    - `PUBLIC_CLERK_PUBLISHABLE_KEY` = `pk_test_...` (valeur de Clerk)
    - `CLERK_SECRET_KEY` = `sk_test_...` (marque comme **encrypted**)
+   - `ALLOWED_EMAILS` = `ludo@coolbeans.cc,email-de-papa@example.com` (les emails autorisés à voir le dashboard, séparés par des virgules)
 7. **Save and Deploy**
 
 Le premier build prend ~2 min. Tu obtiens une URL `https://papa-check-dashboard.pages.dev`.
@@ -94,7 +95,7 @@ wrangler pages dev ./dist --d1 DB=cd14815d-001a-4765-986e-4952c2be09b2
 ## Sécurité
 
 - Clerk gère le sign-in/sign-out + cookies de session HttpOnly Secure SameSite.
-- Allowlist côté Clerk : seuls les emails listés peuvent créer un compte.
+- Allowlist côté code (env var `ALLOWED_EMAILS`) : les utilisateurs hors liste peuvent créer un compte mais sont redirigés sur `/forbidden`. Pour ajouter quelqu'un, modifie la var d'env dans Cloudflare Pages et re-déploie.
 - Pas de secret en clair dans le code : `CLERK_SECRET_KEY` est dans les env vars chiffrées Cloudflare.
 - D1 accès via prepared statements (`.bind()`) — pas de concat SQL.
 - Le middleware s'exécute sur **toutes** les requêtes vers `/` et `/api/*` (pas de bypass).
