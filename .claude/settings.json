@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/ludovicbourgoin/Documents/papa-check add dashboard/package.json dashboard/package-lock.json)",
+      "Bash(git -C /Users/ludovicbourgoin/Documents/papa-check commit -m \"Pin @astrojs/cloudflare to 13.4.0 to test [object Object] regression\")",
+      "Bash(git -C /Users/ludovicbourgoin/Documents/papa-check push)"
+    ]
+  }
+}
