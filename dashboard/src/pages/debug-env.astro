@@ -1,0 +1,19 @@
+---
+import { env } from "cloudflare:workers";
+
+const state = {
+  hasDB: typeof env.DB === "object" && env.DB !== null,
+  hasAllowedEmails: typeof env.ALLOWED_EMAILS === "string" && env.ALLOWED_EMAILS.length > 0,
+  allowedEmailsLength: env.ALLOWED_EMAILS?.length ?? 0,
+  hasPublishableKey: typeof env.PUBLIC_CLERK_PUBLISHABLE_KEY === "string" && env.PUBLIC_CLERK_PUBLISHABLE_KEY.length > 0,
+  publishableKeyPrefix: env.PUBLIC_CLERK_PUBLISHABLE_KEY?.slice(0, 8) ?? null,
+  hasSecretKey: typeof env.CLERK_SECRET_KEY === "string" && env.CLERK_SECRET_KEY.length > 0,
+  secretKeyPrefix: env.CLERK_SECRET_KEY?.slice(0, 8) ?? null,
+  bindingsKeys: Object.keys(env as Record<string, unknown>).sort(),
+};
+
+return new Response(JSON.stringify(state, null, 2), {
+  status: 200,
+  headers: { "content-type": "application/json" },
+});
+---
