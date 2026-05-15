@@ -1,7 +1,6 @@
 name = "papa-check-dashboard"
 compatibility_date = "2026-01-15"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = "./dist"
 
 # Binding sur la même D1 que le Worker.
 [[d1_databases]]

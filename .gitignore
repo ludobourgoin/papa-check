@@ -46,3 +46,6 @@ build/
 # Coverage
 coverage/
 .nyc_output/
+
+# Local preview file (not part of the Astro app)
+dashboard/preview.html
