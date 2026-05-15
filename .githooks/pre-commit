@@ -71,8 +71,8 @@ declare -a PATTERNS=(
 )
 
 for pat in "${PATTERNS[@]}"; do
-  if echo "$diff_added" | grep -E -q "$pat"; then
-    match=$(echo "$diff_added" | grep -E "$pat" | head -1 | cut -c1-120)
+  if echo "$diff_added" | grep -E -q -e "$pat"; then
+    match=$(echo "$diff_added" | grep -E -e "$pat" | head -1 | cut -c1-120)
     fail "secret potentiel détecté (motif: $pat)
        Ligne : $match"
   fi
