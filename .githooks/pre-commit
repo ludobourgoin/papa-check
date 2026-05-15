@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Pre-commit guard : bloque le commit si on détecte des secrets ou des fichiers sensibles.
+# Active une seule fois avec :   git config core.hooksPath .githooks
+
+set -euo pipefail
+
+RED=$'\033[0;31m'
+YELLOW=$'\033[0;33m'
+NC=$'\033[0m'
+
+fail() {
+  echo -e "${RED}✗ pre-commit bloqué :${NC} $1" >&2
+  echo -e "${YELLOW}→ corrige et relance, ou bypass explicite avec : git commit --no-verify${NC}" >&2
+  exit 1
+}
+
+# 1) Fichiers interdits par nom — quelle que soit leur contenu.
+FORBIDDEN_FILES=(
+  '\.env$'
+  '\.env\.'
+  '\.dev\.vars$'
+  '\.dev\.vars\.[^e]'   # autorise .dev.vars.example
+  '\.pem$'
+  '\.key$'
+  '\.p12$'
+  '\.pfx$'
+  'credentials\.json$'
+  'secrets\.json$'
+  'id_rsa$'
+  'id_ed25519$'
+)
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+while IFS= read -r f; do
+  for pat in "${FORBIDDEN_FILES[@]}"; do
+    if echo "$f" | grep -qE "$pat"; then
+      fail "fichier sensible staged : $f (motif: $pat)"
+    fi
+  done
+done <<< "$staged"
+
+# 2) Patterns de secrets connus dans le contenu staged.
+# On scanne `git diff --cached` (les lignes ajoutées) plutôt que tout le fichier.
+diff_added=$(git diff --cached --no-color -U0 | grep -E '^\+[^+]' || true)
+[ -z "$diff_added" ] && exit 0
+
+declare -a PATTERNS=(
+  # Telegram bot token
+  '[0-9]{8,10}:[A-Za-z0-9_-]{35}'
+  # AWS Access Key
+  'AKIA[0-9A-Z]{16}'
+  'ASIA[0-9A-Z]{16}'
+  # GitHub tokens
+  'gh[oprsu]_[A-Za-z0-9]{36,}'
+  # Slack
+  'xox[baprs]-[A-Za-z0-9-]{10,}'
+  # Google API
+  'AIza[0-9A-Za-z_-]{35}'
+  # Stripe
+  'sk_live_[0-9a-zA-Z]{24,}'
+  'rk_live_[0-9a-zA-Z]{24,}'
+  # OpenAI / Anthropic
+  'sk-[A-Za-z0-9]{32,}'
+  'sk-ant-[A-Za-z0-9_-]{50,}'
+  # Generic private key
+  '-----BEGIN (RSA |OPENSSH |EC |DSA |PGP )?PRIVATE KEY-----'
+  # Cloudflare global API key (32 hex)
+  'cf_[a-f0-9]{37,}'
+)
+
+for pat in "${PATTERNS[@]}"; do
+  if echo "$diff_added" | grep -E -q "$pat"; then
+    match=$(echo "$diff_added" | grep -E "$pat" | head -1 | cut -c1-120)
+    fail "secret potentiel détecté (motif: $pat)
+       Ligne : $match"
+  fi
+done
+
+# 3) Heuristique légère : variables nommées comme un secret avec une valeur littérale longue.
+suspicious=$(echo "$diff_added" | grep -E -i '(api[_-]?key|secret|token|password|passwd|bearer)\s*[:=]\s*['"'"'"][^'"'"'"]{16,}['"'"'"]' || true)
+if [ -n "$suspicious" ]; then
+  fail "assignation suspecte d'un secret en littéral :
+       $(echo "$suspicious" | head -1 | cut -c1-160)"
+fi
+
+exit 0

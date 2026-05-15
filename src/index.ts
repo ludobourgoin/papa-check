@@ -1,4 +1,4 @@
-import { sendMessage, type TelegramUpdate } from "./telegram";
+import { sendMessage } from "./telegram";
 import { pickGreeting } from "./messages";
 import { isPositive } from "./classifier";
 import {
@@ -8,6 +8,7 @@ import {
   recordReply,
   sentRecently,
 } from "./db";
+import { constantTimeEquals, readAndValidateUpdate } from "./security";
 
 export interface Env {
   DB: D1Database;
@@ -17,7 +18,7 @@ export interface Env {
   TELEGRAM_WEBHOOK_SECRET: string;
 }
 
-const SEND_WEEKDAYS = new Set([1, 3, 5, 6]); // Mon, Wed, Fri, Sat (JS-style: 0=Sun)
+const SEND_WEEKDAYS = new Set([1, 3, 5, 6]);
 const SEND_HOUR_PARIS = 10;
 const TIMEOUT_MINUTES = 20;
 
@@ -33,7 +34,6 @@ function parisTime(now: Date): ParisTime {
     weekday: "short",
     hour12: false,
   }).formatToParts(now);
-
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   const weekdayMap: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -73,32 +73,32 @@ async function handleTimeoutCheck(env: Env, now: Date): Promise<void> {
 }
 
 async function handleWebhook(req: Request, env: Env): Promise<Response> {
-  const secret = req.headers.get("x-telegram-bot-api-secret-token");
-  if (secret !== env.TELEGRAM_WEBHOOK_SECRET) {
+  const ok = new Response("ok");
+
+  const provided = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
+  if (!(await constantTimeEquals(provided, env.TELEGRAM_WEBHOOK_SECRET))) {
     return new Response("forbidden", { status: 403 });
   }
 
-  const update = (await req.json()) as TelegramUpdate;
-  const msg = update.message;
-  if (!msg?.text) return new Response("ok");
+  const validated = await readAndValidateUpdate(req);
+  if (!validated) return ok;
 
-  const chatId = String(msg.chat.id);
-  if (chatId !== env.TELEGRAM_FATHER_CHAT_ID) {
-    return new Response("ok");
-  }
+  if (validated.chatId !== env.TELEGRAM_FATHER_CHAT_ID) return ok;
 
+  const nowUnix = Math.floor(Date.now() / 1000);
   const open = await getOpenCheckIn(env.DB);
+
   if (!open) {
     await sendMessage(
       env.TELEGRAM_BOT_TOKEN,
       env.TELEGRAM_MY_CHAT_ID,
-      `💬 Message spontané de papa :\n\n${msg.text}`,
+      `💬 Message spontané de papa :\n\n${validated.text}`,
     );
-    return new Response("ok");
+    return ok;
   }
 
-  const positive = isPositive(msg.text);
-  await recordReply(env.DB, open.id, msg.date, msg.text, positive);
+  const positive = isPositive(validated.text);
+  await recordReply(env.DB, open.id, nowUnix, validated.text, positive);
 
   if (positive) {
     await sendMessage(
@@ -110,20 +110,25 @@ async function handleWebhook(req: Request, env: Env): Promise<Response> {
     await sendMessage(
       env.TELEGRAM_BOT_TOKEN,
       env.TELEGRAM_MY_CHAT_ID,
-      `📨 Réponse de papa :\n\n${msg.text}`,
+      `📨 Réponse de papa :\n\n${validated.text}`,
     );
   }
 
-  return new Response("ok");
+  return ok;
 }
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
-    if (req.method === "POST" && url.pathname === "/telegram") {
-      return handleWebhook(req, env);
+    if (req.method !== "POST" || url.pathname !== "/telegram") {
+      return new Response("not found", { status: 404 });
     }
-    return new Response("not found", { status: 404 });
+    try {
+      return await handleWebhook(req, env);
+    } catch (err) {
+      console.error("webhook error", err);
+      return new Response("ok");
+    }
   },
 
   async scheduled(
@@ -133,10 +138,14 @@ export default {
   ): Promise<void> {
     const now = new Date(controller.scheduledTime);
     ctx.waitUntil(
-      Promise.all([
+      Promise.allSettled([
         handleScheduledCheckIn(env, now),
         handleTimeoutCheck(env, now),
-      ]).then(() => undefined),
+      ]).then((results) => {
+        for (const r of results) {
+          if (r.status === "rejected") console.error("scheduled error", r.reason);
+        }
+      }),
     );
   },
 };
