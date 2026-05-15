@@ -1,0 +1,20 @@
+name = "papa-check"
+main = "src/index.ts"
+compatibility_date = "2026-01-15"
+
+# Une seule cron toutes les 5 min. Les handlers internes filtrent :
+# - check-in : seulement si on est lundi/mercredi/vendredi/samedi à 10h Paris
+# - timeout  : seulement s'il y a un check-in en attente depuis > 20 min
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "papa-check"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Les secrets se créent via : wrangler secret put NOM
+# - TELEGRAM_BOT_TOKEN
+# - TELEGRAM_FATHER_CHAT_ID
+# - TELEGRAM_MY_CHAT_ID
+# - TELEGRAM_WEBHOOK_SECRET

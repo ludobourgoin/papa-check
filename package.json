@@ -1,0 +1,19 @@
+{
+  "name": "papa-check",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail",
+    "db:init": "wrangler d1 execute papa-check --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute papa-check --local --file=./schema.sql",
+    "db:query": "wrangler d1 execute papa-check --remote --command",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.90.0"
+  }
+}
