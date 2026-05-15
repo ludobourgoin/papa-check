@@ -1,5 +1,6 @@
 ---
 import { UserButton } from "@clerk/astro/components";
+import { env } from "cloudflare:workers";
 import Layout from "@/layouts/Layout.astro";
 import {
   getStats,
@@ -13,7 +14,14 @@ import { requireAllowedUser } from "@/lib/auth";
 const gate = await requireAllowedUser(Astro);
 if (gate.redirectTo) return Astro.redirect(gate.redirectTo);
 
-const db = Astro.locals.runtime.env.DB;
+if (gate.debugError) {
+  return new Response(`Auth error: ${gate.debugError}`, {
+    status: 500,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
+
+const db = env.DB;
 const [stats, recent] = await Promise.all([
   getStats(db),
   getRecentCheckIns(db, 50),
@@ -28,7 +36,7 @@ const fmt = (n: number | null, unit = "") =>
     <h1>Papa Check</h1>
     <div class="topbar-right">
       <button id="refresh" type="button" title="Rafraîchir">↻</button>
-      <UserButton afterSignOutUrl="/sign-in" />
+      <UserButton />
     </div>
   </header>
 
