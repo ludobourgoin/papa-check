@@ -12,7 +12,11 @@ export interface AuthGate {
 export async function requireAllowedUser(astro: AstroGlobal): Promise<AuthGate> {
   try {
     const secretKey = env.CLERK_SECRET_KEY;
-    const publishableKey = env.PUBLIC_CLERK_PUBLISHABLE_KEY;
+    // Le PUBLIC_CLERK_PUBLISHABLE_KEY est posé en var Build (Cloudflare) →
+    // Vite l'inline dans le bundle au build via import.meta.env. On lit donc
+    // depuis import.meta.env, pas depuis le runtime env (qui disparaît au
+    // re-déploiement des plain-text vars de la UI).
+    const publishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY;
 
     if (!secretKey || !publishableKey) {
       console.error("auth: missing Clerk env vars");

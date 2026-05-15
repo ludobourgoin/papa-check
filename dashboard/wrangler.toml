@@ -6,6 +6,13 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 head_sampling_rate = 1
 
+# Variables non-sensibles versionnées dans wrangler.toml pour qu'elles
+# survivent aux re-déploiements (les variables "plain text" ajoutées dans
+# la UI Cloudflare disparaissent lors des nouveaux deploys). Le seul vrai
+# secret (CLERK_SECRET_KEY) reste géré via la UI Cloudflare.
+[vars]
+ALLOWED_EMAILS = "michel.mibou@gmail.com,ludovic.bourgoin@gmail.com,ludo@coolbeans.cc"
+
 # Binding sur la même D1 que le Worker.
 [[d1_databases]]
 binding = "DB"
