@@ -109,6 +109,33 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 
 ---
 
+## Consulter l'historique et les statistiques
+
+Tous les check-ins (envois + réponses + délai + timeouts) sont stockés en permanence dans la table D1 `check_ins`.
+
+```bash
+# 20 derniers check-ins avec délai, statut, extrait de réponse
+npm run logs
+
+# Dashboard : taux de réponse, délais moyens, taux de fausses alertes,
+# répartition par jour de la semaine
+npm run stats
+```
+
+`npm run stats` calcule notamment :
+- **Taux de réponse global** : `replied / total_envois`
+- **Taux de fausses alertes** : `timeouts où papa a fini par répondre positivement / timeouts envoyés` — c'est la métrique "papa allait bien mais n'a pas répondu dans les 20 min"
+- **Délai moyen / min / max** de réponse (en minutes)
+- **Répartition par jour de la semaine** : utile pour voir si certains jours ont moins de réponses
+
+Pour des requêtes ad-hoc sur la D1 :
+
+```bash
+npx wrangler d1 execute papa-check --remote --command "SELECT * FROM check_ins WHERE reply_was_positive = 0"
+```
+
+---
+
 ## Architecture
 
 - **`src/index.ts`** — entrée Worker : `fetch` (webhook) + `scheduled` (crons).

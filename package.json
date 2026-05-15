@@ -9,6 +9,10 @@
     "db:init": "wrangler d1 execute papa-check --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute papa-check --local --file=./schema.sql",
     "db:query": "wrangler d1 execute papa-check --remote --command",
+    "stats": "bash scripts/stats.sh --remote",
+    "stats:local": "bash scripts/stats.sh --local",
+    "logs": "bash scripts/logs.sh --remote",
+    "logs:local": "bash scripts/logs.sh --local",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
