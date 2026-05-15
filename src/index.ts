@@ -76,7 +76,8 @@ async function handleWebhook(req: Request, env: Env): Promise<Response> {
   const ok = new Response("ok");
 
   const provided = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-  if (!(await constantTimeEquals(provided, env.TELEGRAM_WEBHOOK_SECRET))) {
+  const expected = env.TELEGRAM_WEBHOOK_SECRET;
+  if (!expected || !(await constantTimeEquals(provided, expected))) {
     return new Response("forbidden", { status: 403 });
   }
 

@@ -1,14 +1,14 @@
 export const GREETINGS = [
-  "Salut papa, comment tu vas ce matin ?",
+  "Salut padre, comment tu vas ce matin ?",
   "Coucou, ça va bien aujourd'hui ?",
-  "Hello papa, tout va bien ?",
-  "Bonjour, comment tu te sens ?",
+  "Hello padre, tout va bien ?",
+  "Bonjour padre, comment tu te sens ?",
   "Salut, ça roule ?",
-  "Coucou papa, tout va bien chez toi ?",
+  "Coucou padre, tout va bien chez toi ?",
   "Salut, comment ça va aujourd'hui ?",
-  "Bonjour papa, tu vas bien ?",
+  "Bonjour padre, tu vas bien ?",
   "Hello, comment se passe ta journée ?",
-  "Coucou, tout est ok ?",
+  "Coucou padre, tout est ok ?",
 ];
 
 export function pickGreeting(): string {
